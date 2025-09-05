@@ -1,10 +1,7 @@
-module.exports = {
-  purge: [],
-  darkMode: false, // or 'media' or 'class'
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ["./index.html", "./src/**/*.{ts,tsx}"], // Archivos donde Tailwind buscará clases
   theme: {
-    extend: {},
-  },
-  variants: {
     extend: {},
   },
   plugins: [],
