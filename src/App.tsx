@@ -10,7 +10,7 @@ function App() {
   // Función para buscar el clima
   const fetchWeather = async () => {
     try {
-      const apiKey = "TU_API_KEY_DE_OPENWEATHER"; // <-- cambia por tu API key
+      const apiKey = "ba47a1950639b724b679ef2bf27c73a1"; // <-- AQUI VA MI API KEY 
       const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=es`;
 
       const response = await fetch(url);
