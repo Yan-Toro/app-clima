@@ -1,62 +1,108 @@
-import { useState } from "react";
-import "./App.css";
+import { useEffect, useState } from "react";
+import Forecast from "./components/Forecast";
+
+const API_KEY = "TU_API_KEY_DE_OPENWEATHER"; //  Reemplaza con tu clave real
+const BASE_URL = "https://api.openweathermap.org/data/2.5";
 
 function App() {
-  // Estado para guardar ciudad
-  const [city, setCity] = useState("");
-  // Estado para guardar datos del clima
-  const [weather, setWeather] = useState<any>(null);
+  const [city, setCity] = useState("Santiago"); // Ciudad por defecto
+  const [weatherData, setWeatherData] = useState<any>(null);
+  const [forecastData, setForecastData] = useState<any[]>([]);
+  const [units, setUnits] = useState<"metric" | "imperial">("metric"); // °C o °F
+  const [darkMode, setDarkMode] = useState<boolean>(
+    localStorage.getItem("darkMode") === "true" // Persistencia del modo oscuro
+  );
 
-  // Función para buscar el clima
+  // 🔹 Función para pedir el clima actual
   const fetchWeather = async () => {
-    try {
-      const apiKey = "ba47a1950639b724b679ef2bf27c73a1"; // <-- AQUI VA MI API KEY 
-      const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric&lang=es`;
+    const url = `${BASE_URL}/weather?q=${encodeURIComponent(
+      city
+    )}&appid=${API_KEY}&units=${units}&lang=es`;
 
-      const response = await fetch(url);
-      const data = await response.json();
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const data = await res.json();
+    setWeatherData(data);
+  };
 
-      if (data.cod === "404") {
-        alert("Ciudad no encontrada ❌");
-        return;
-      }
+  // 🔹 Función para pedir el pronóstico
+  const fetchForecast = async () => {
+    const url = `${BASE_URL}/forecast?q=${encodeURIComponent(
+      city
+    )}&appid=${API_KEY}&units=${units}&lang=es`;
 
-      setWeather(data);
-    } catch (error) {
-      console.error("Error al obtener clima:", error);
-    }
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const data = await res.json();
+
+    // OpenWeather devuelve pronóstico cada 3 horas → filtramos 1 por día
+    const daily = data.list.filter((_: any, i: number) => i % 8 === 0);
+    setForecastData(daily);
+  };
+
+  //  Llamar APIs cuando cambie ciudad o unidades
+  useEffect(() => {
+    fetchWeather();
+    fetchForecast();
+  }, [city, units]);
+
+  // Cambiar entre °C y °F
+  const toggleUnits = () => {
+    setUnits(units === "metric" ? "imperial" : "metric");
+  };
+
+  //  Cambiar tema oscuro/claro
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+    localStorage.setItem("darkMode", String(!darkMode)); // Persistencia
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-blue-100 p-6">
-      <h1 className="text-3xl font-bold mb-4">🌤 App del Clima</h1>
+    <div className={darkMode ? "dark bg-gray-900 text-white min-h-screen p-6" : "bg-gray-100 min-h-screen p-6"}>
+      <div className="max-w-2xl mx-auto">
+        {/* Input de ciudad */}
+        <input
+          type="text"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          className="w-full p-3 rounded-lg border dark:bg-gray-800 dark:border-gray-600"
+          placeholder="Escribe una ciudad..."
+        />
 
-      {/* Input para escribir ciudad */}
-      <input
-        type="text"
-        value={city}
-        onChange={(e) => setCity(e.target.value)}
-        placeholder="Ingresa una ciudad..."
-        className="border rounded p-2 mb-2 w-64"
-      />
+        {/* Botones */}
+        <div className="flex justify-between mt-4">
+          <button
+            onClick={toggleUnits}
+            className="px-4 py-2 rounded-lg bg-blue-500 text-white"
+          >
+            Cambiar a {units === "metric" ? "°F" : "°C"}
+          </button>
 
-      {/* Botón para buscar */}
-      <button
-        onClick={fetchWeather}
-        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-      >
-        Buscar
-      </button>
-
-      {/* Mostrar resultados */}
-      {weather && (
-        <div className="mt-4 bg-white p-4 rounded shadow-md w-80 text-center">
-          <h2 className="text-2xl font-bold">{weather.name}</h2>
-          <p className="text-lg">{weather.weather[0].description}</p>
-          <p className="text-xl font-semibold">{weather.main.temp}°C</p>
-          <p>🌡 Mín: {weather.main.temp_min}°C / Máx: {weather.main.temp_max}°C</p>
+          <button
+            onClick={toggleDarkMode}
+            className="px-4 py-2 rounded-lg bg-gray-700 text-white"
+          >
+            {darkMode ? "Modo Claro" : "Modo Oscuro"}
+          </button>
         </div>
-      )}
+
+        {/* Clima actual */}
+        {weatherData && (
+          <div className="mt-6 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-md">
+            <h2 className="text-2xl font-bold">{weatherData.name}</h2>
+            <p className="text-lg">
+              {Math.round(weatherData.main.temp)}°{" "}
+              {units === "metric" ? "C" : "F"}
+            </p>
+            <p className="capitalize">{weatherData.weather[0].description}</p>
+          </div>
+        )}
+
+        {/* Pronóstico */}
+        {forecastData.length > 0 && (
+          <Forecast forecast={forecastData} units={units} />
+        )}
+      </div>
     </div>
   );
 }
