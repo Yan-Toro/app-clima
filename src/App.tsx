@@ -1,153 +1,101 @@
 import { useEffect, useState } from "react";
-import Forecast from "./components/Forecast";
-import Header from "./components/Header";
-import FavoritesDrawer from "./components/FavoritesDrawer";
 
-const API_KEY = "ba47a1950639b724b679ef2bf27c73a1"; // 🔴 Reemplaza con tu clave real
-const BASE_URL = "https://api.openweathermap.org/data/2.5";
-
-// 🔹 Fondo dinámico según condición del clima
-const getBackground = (weather: string) => {
-  if (!weather) return "from-gray-200 to-gray-400";
-
-  if (weather.includes("Clear"))
-    return "from-yellow-200 via-blue-200 to-blue-400";
-  if (weather.includes("Cloud"))
-    return "from-gray-300 via-gray-400 to-gray-600";
-  if (weather.includes("Rain"))
-    return "from-blue-400 via-gray-600 to-gray-900";
-  if (weather.includes("Snow"))
-    return "from-blue-100 via-blue-200 to-white";
-
-  return "from-gray-200 to-gray-400";
-};
+// 🔑 Reemplaza con tu API Key real de OpenWeather
+const API_KEY = "ba47a1950639b724b679ef2bf27c73a1";
 
 function App() {
-  // Estado principal
-  const [city, setCity] = useState("Santiago");
-  const [weatherData, setWeatherData] = useState<any>(null);
-  const [forecastData, setForecastData] = useState<any[]>([]);
-  const [units, setUnits] = useState<"metric" | "imperial">("metric");
-  const [darkMode, setDarkMode] = useState<boolean>(
-    localStorage.getItem("darkMode") === "true"
-  );
-  const [favorites, setFavorites] = useState<string[]>(["Santiago", "Londres"]);
+  const [city, setCity] = useState("Santiago"); // ciudad por defecto
+  const [weather, setWeather] = useState<any>(null); // datos del clima
+  const [unit, setUnit] = useState("metric"); // unidades: metric = °C, imperial = °F
+  const [loading, setLoading] = useState(false); // estado de carga
+  const [error, setError] = useState<string | null>(null); // errores
 
-  // 🔹 Pedir clima actual
-  const fetchWeather = async () => {
-    const url = `${BASE_URL}/weather?q=${encodeURIComponent(
-      city
-    )}&appid=${API_KEY}&units=${units}&lang=es`;
+  // 🔄 Función para pedir datos del clima
+  const fetchWeather = async (city: string) => {
+    try {
+      setLoading(true); // comienza carga
+      setError(null); // limpia error anterior
 
-    const res = await fetch(url);
-    if (!res.ok) return;
-    const data = await res.json();
-    setWeatherData(data);
-  };
+      const response = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=${unit}&lang=es`
+      );
 
-  // 🔹 Pedir pronóstico 5 días
-  const fetchForecast = async () => {
-    const url = `${BASE_URL}/forecast?q=${encodeURIComponent(
-      city
-    )}&appid=${API_KEY}&units=${units}&lang=es`;
+      if (!response.ok) {
+        throw new Error("No se pudo obtener el clima. Verifica la ciudad o API key.");
+      }
 
-    const res = await fetch(url);
-    if (!res.ok) return;
-    const data = await res.json();
-
-    // Filtramos un valor cada 8 (24h), ya que la API devuelve cada 3h
-    const daily = data.list.filter((_: any, i: number) => i % 8 === 0);
-    setForecastData(daily);
-  };
-
-  // 🔹 Efecto: cuando cambia ciudad o unidades → actualizar
-  useEffect(() => {
-    fetchWeather();
-    fetchForecast();
-  }, [city, units]);
-
-  // 🔹 Cambiar °C ↔ °F
-  const toggleUnits = () => {
-    setUnits(units === "metric" ? "imperial" : "metric");
-  };
-
-  // 🔹 Cambiar tema oscuro ↔ claro
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    localStorage.setItem("darkMode", String(!darkMode));
-  };
-
-  // 🔹 Agregar ciudad actual a favoritos
-  const addFavorite = () => {
-    if (!favorites.includes(city)) {
-      setFavorites([...favorites, city]);
+      const data = await response.json();
+      setWeather(data);
+    } catch (err: any) {
+      setError(err.message);
+      setWeather(null);
+    } finally {
+      setLoading(false); // siempre termina carga
     }
   };
 
-  return (
-    <div
-      className={`min-h-screen p-6 transition-colors duration-700 bg-gradient-to-br ${
-        weatherData
-          ? getBackground(weatherData.weather[0].main)
-          : "from-gray-200 to-gray-400"
-      } ${darkMode ? "dark" : ""} font-inter`}
-    >
-      <div className="max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <Header
-            units={units}
-            toggleUnits={toggleUnits}
-            darkMode={darkMode}
-            toggleDarkMode={toggleDarkMode}
-          />
-          <FavoritesDrawer
-            favorites={favorites}
-            onSelect={(favCity) => setCity(favCity)}
-          />
-        </div>
+  // 📌 Ejecuta la búsqueda al inicio y cada vez que cambie la unidad
+  useEffect(() => {
+    fetchWeather(city);
+  }, [unit]);
 
-        {/* Input de ciudad */}
-        <div className="mt-4 flex gap-2">
-          <input
-            type="text"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            className="w-full p-3 rounded-lg border dark:bg-gray-800 dark:border-gray-600"
-            placeholder="Escribe una ciudad..."
-          />
+  // 🔄 Cambiar entre °C y °F
+  const toggleUnit = () => {
+    setUnit(unit === "metric" ? "imperial" : "metric");
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-start p-6 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white">
+      {/* Header */}
+      <header className="w-full flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Clima App</h1>
+        <div className="flex gap-2">
           <button
-            onClick={addFavorite}
-            className="px-4 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 transition"
+            onClick={toggleUnit}
+            className="px-4 py-2 bg-blue-500 text-white rounded-xl shadow hover:bg-blue-600 transition"
           >
-            ⭐
+            Cambiar a {unit === "metric" ? "°F" : "°C"}
           </button>
         </div>
+      </header>
 
-        {/* Clima actual */}
-        {weatherData && (
-          <div className="mt-6 p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg text-center">
-            <h2 className="text-3xl font-bold">{weatherData.name}</h2>
-            <img
-              className="mx-auto w-20 h-20"
-              src={`https://openweathermap.org/img/wn/${weatherData.weather[0].icon}@4x.png`}
-              alt={weatherData.weather[0].description}
-            />
-            <p className="text-4xl font-bold">
-              {Math.round(weatherData.main.temp)}°{" "}
-              {units === "metric" ? "C" : "F"}
-            </p>
-            <p className="capitalize text-lg">
-              {weatherData.weather[0].description}
-            </p>
-          </div>
-        )}
-
-        {/* Pronóstico 5 días */}
-        {forecastData.length > 0 && (
-          <Forecast forecast={forecastData} units={units} />
-        )}
+      {/* Input ciudad */}
+      <div className="flex gap-2 mb-6">
+        <input
+          type="text"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          placeholder="Escribe una ciudad..."
+          className="px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+        />
+        <button
+          onClick={() => fetchWeather(city)}
+          className="px-4 py-2 bg-green-500 text-white rounded-xl shadow hover:bg-green-600 transition"
+        >
+          Buscar
+        </button>
       </div>
+
+      {/* Estado de carga */}
+      {loading && <p className="text-blue-500">Cargando datos del clima...</p>}
+
+      {/* Mensaje de error */}
+      {error && <p className="text-red-500">{error}</p>}
+
+      {/* Tarjeta con el clima */}
+      {weather && !loading && !error && (
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-2xl text-center w-80">
+          <h2 className="text-xl font-semibold mb-2">{weather.name}</h2>
+          <p className="text-5xl font-bold mb-2">
+            {Math.round(weather.main.temp)}°{unit === "metric" ? "C" : "F"}
+          </p>
+          <p className="capitalize text-lg mb-2">{weather.weather[0].description}</p>
+          <p className="text-sm">
+            🌡 Mín: {Math.round(weather.main.temp_min)}° / Máx:{" "}
+            {Math.round(weather.main.temp_max)}°
+          </p>
+        </div>
+      )}
     </div>
   );
 }
