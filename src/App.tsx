@@ -3,7 +3,7 @@ import Forecast from "./components/Forecast";
 import Header from "./components/Header";
 import FavoritesDrawer from "./components/FavoritesDrawer";
 
-const API_KEY = "TU_API_KEY_DE_OPENWEATHER"; // 🔴 Reemplaza con tu clave real
+const API_KEY = "ba47a1950639b724b679ef2bf27c73a1"; // 🔴 Reemplaza con tu clave real
 const BASE_URL = "https://api.openweathermap.org/data/2.5";
 
 // 🔹 Fondo dinámico según condición del clima
